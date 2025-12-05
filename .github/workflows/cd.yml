@@ -1,11 +1,12 @@
 name: CD
+
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: [main]   # despliegue automático al hacer push en main
+  workflow_dispatch:   # también puedes lanzarlo manualmente
 
 jobs:
-  deploy:
+  frontend-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,25 +14,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Build app
+      - name: Build Angular app
         run: |
+          cd ag-prueba-front
           npm ci
           npm run build --if-present
-      - name: Package backend
-        uses: actions/setup-java@v4
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          distribution: 'temurin'
-          java-version: '17'
-      - run: mvn -B -DskipTests package
-      - name: Deploy to staging
-        env:
-          STAGING_URL: ${{ secrets.STAGING_URL }}
-          STAGING_TOKEN: ${{ secrets.STAGING_TOKEN }}
-        run: |
-          # ejemplo: subir artefacto o llamar API de despliegue
-          curl -X POST "$STAGING_URL/deploy" \
-               -H "Authorization: Bearer $STAGING_TOKEN" \
-               -F "artifact=@backend/target/app.jar" \
-               -F "frontend=@dist/app.zip"
-      - name: Report duration
-        run: echo "Workflow duration ends at $(date)"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ag-prueba-front/dist/ag-prueba-front
