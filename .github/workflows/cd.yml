@@ -2,8 +2,8 @@ name: CD
 
 on:
   push:
-    branches: [develop]   # despliegue automático al hacer push en main
-  workflow_dispatch:   # también puedes lanzarlo manualmente
+    branches: [develop]   # despliegue automático al hacer push en develop
+  workflow_dispatch:      # también puedes lanzarlo manualmente
 
 jobs:
   frontend-deploy:
@@ -24,3 +24,39 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ag-prueba-front/dist/ag-prueba-front
+
+  authorization-server-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Package JAR (skip tests)
+        run: mvn -B clean package -DskipTests
+        working-directory: authorization-server
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: authorization-server-jar
+          path: authorization-server/target/*.jar
+
+  resource-server-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Package JAR (skip tests)
+        run: mvn -B clean package -DskipTests
+        working-directory: resource-server
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resource-server-jar
+          path: resource-server/target/*.jar
