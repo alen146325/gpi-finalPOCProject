@@ -2,18 +2,22 @@ name: CD
 
 on:
   push:
-    branches: [develop]   # despliegue automático al hacer push en develop
-  workflow_dispatch:      # también puedes lanzarlo manualmente
+    branches: [develop]
+  workflow_dispatch:
 
 jobs:
+  shared-setup:
+    uses: ./.github/workflows/shared.yml
+    with:
+      node_version: '20'
+      java_version: '17'
+      deploy_env: 'production'
+
   frontend-deploy:
+    needs: shared-setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
       - name: Build Angular app
         run: |
           cd ag-prueba-front
@@ -26,14 +30,10 @@ jobs:
           publish_dir: ag-prueba-front/dist/ag-prueba-front
 
   authorization-server-deploy:
+    needs: shared-setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
       - name: Package JAR (skip tests)
         run: mvn -B clean package -DskipTests
         working-directory: authorization-server
@@ -44,14 +44,10 @@ jobs:
           path: authorization-server/target/*.jar
 
   resource-server-deploy:
+    needs: shared-setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
       - name: Package JAR (skip tests)
         run: mvn -B clean package -DskipTests
         working-directory: resource-server
