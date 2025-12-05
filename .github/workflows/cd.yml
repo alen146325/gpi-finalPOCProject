@@ -2,7 +2,7 @@ name: CD
 
 on:
   push:
-    branches: [main]   # despliegue automático al hacer push en main
+    branches: [develop]   # despliegue automático al hacer push en main
   workflow_dispatch:   # también puedes lanzarlo manualmente
 
 jobs:
