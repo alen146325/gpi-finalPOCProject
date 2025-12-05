@@ -1,0 +1,34 @@
+name: shared-pipeline
+on:
+  workflow_call:
+    inputs:
+      node_version:
+        required: false
+        type: string
+      java_version:
+        required: false
+        type: string
+      deploy_env:
+        required: false
+        type: string
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Cache Node
+        if: inputs.node_version != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: 'npm'
+      - name: Cache Java
+        if: inputs.java_version != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ inputs.java_version }}
+      - name: Export env
+        run: |
+          echo "DEPLOY_ENV=${{ inputs.deploy_env }}" >> $GITHUB_ENV
