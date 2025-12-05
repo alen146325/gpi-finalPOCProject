@@ -26,6 +26,7 @@ jobs:
         with:
           node-version: ${{ inputs.node_version }}
           cache: 'npm'
+          cache-dependency-path: ag-prueba-front/package-lock.json
 
       - name: Cache Java
         if: inputs.java_version != ''
