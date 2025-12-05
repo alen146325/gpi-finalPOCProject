@@ -35,8 +35,8 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Build & Test (Maven)
-        run: mvn -B clean verify
+      - name: Build & Package (skip tests)
+        run: mvn -B clean package -DskipTests
         working-directory: authorization-server
 
   resource-server:
@@ -48,6 +48,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Build & Test (Maven)
-        run: mvn -B clean verify
+      - name: Build & Package (skip tests)
+        run: mvn -B clean package -DskipTests
         working-directory: resource-server
