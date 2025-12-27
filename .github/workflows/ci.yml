@@ -9,7 +9,7 @@ on:
 
 jobs:
   frontend:
-    name: Frontend - Build, Lint, SBOM & Artifacts
+    name: Frontend - Lint, Build, SBOM & Artifacts
     runs-on: ubuntu-latest
 
     steps:
@@ -34,10 +34,10 @@ jobs:
         working-directory: ag-prueba-front
 
       - name: Generate SBOM (Frontend)
-        run: npx cyclonedx-npm --output-file bom.json
+        run: npx @cyclonedx/cyclonedx-npm --output-file bom.json
         working-directory: ag-prueba-front
 
-      - name: Upload frontend artifacts
+      - name: Upload frontend build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build-${{ github.run_number }}
@@ -50,7 +50,7 @@ jobs:
           path: ag-prueba-front/bom.json
 
   authorization-server:
-    name: Authorization Server - SBOM & Artifacts
+    name: Authorization Server - SBOM
     runs-on: ubuntu-latest
     continue-on-error: true
 
@@ -63,6 +63,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+
+      - name: Grant execute permission to mvnw
+        run: chmod +x mvnw
+        working-directory: authorization-server
 
       - name: Generate SBOM (Authorization Server)
         run: |
@@ -78,7 +82,7 @@ jobs:
           path: authorization-server/target/bom.xml
 
   resource-server:
-    name: Resource Server - SBOM & Artifacts
+    name: Resource Server - SBOM
     runs-on: ubuntu-latest
     continue-on-error: true
 
@@ -91,6 +95,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+
+      - name: Grant execute permission to mvnw
+        run: chmod +x mvnw
+        working-directory: resource-server
 
       - name: Generate SBOM (Resource Server)
         run: |
