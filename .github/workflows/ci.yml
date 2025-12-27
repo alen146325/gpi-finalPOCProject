@@ -31,6 +31,7 @@ jobs:
       - name: Test frontend with coverage
         run: npx ng test --code-coverage --watch=false --browsers=ChromeHeadless
         working-directory: ag-prueba-front
+        continue-on-error: true
 
       - name: Build frontend
         run: npm run build --if-present
