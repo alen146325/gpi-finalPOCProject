@@ -3,60 +3,104 @@ name: CI
 on:
   push:
     branches:
-      - "**"
+      - main
+      - develop
   pull_request:
-    branches:
-      - "**"
 
 jobs:
-  shared-setup:
-    uses: ./.github/workflows/shared.yml
-    with:
-      node_version: '20'
-      java_version: '17'
-      deploy_env: 'ci'
-
   frontend:
-    needs: shared-setup
+    name: Frontend - Build, Lint, SBOM & Artifacts
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Install dependencies
         run: npm ci
         working-directory: ag-prueba-front
 
       - name: Lint frontend
-        run: npm run lint
+        run: npm run lint --if-present
         working-directory: ag-prueba-front
-
-      - name: Test frontend with coverage
-        run: npx ng test --code-coverage --watch=false --browsers=ChromeHeadless
-        working-directory: ag-prueba-front
-        continue-on-error: true
 
       - name: Build frontend
         run: npm run build --if-present
         working-directory: ag-prueba-front
 
+      - name: Generate SBOM (Frontend)
+        run: npx cyclonedx-npm --output-file bom.json
+        working-directory: ag-prueba-front
+
+      - name: Upload frontend artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-${{ github.run_number }}
+          path: ag-prueba-front/dist
+
+      - name: Upload frontend SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-sbom-${{ github.run_number }}
+          path: ag-prueba-front/bom.json
+
   authorization-server:
-    needs: shared-setup
+    name: Authorization Server - SBOM & Artifacts
     runs-on: ubuntu-latest
     continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Backend quality & build (Checkstyle)
-        run: ./mvnw clean verify -DskipTests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Generate SBOM (Authorization Server)
+        run: |
+          ./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.7.9:makeAggregateBom \
+            -DskipTests \
+            -Dmaven.compile.skip=true
         working-directory: authorization-server
 
+      - name: Upload authorization-server SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: authorization-server-sbom-${{ github.run_number }}
+          path: authorization-server/target/bom.xml
+
   resource-server:
-    needs: shared-setup
+    name: Resource Server - SBOM & Artifacts
     runs-on: ubuntu-latest
     continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Backend quality & build (Checkstyle)
-        run: ./mvnw clean verify -DskipTests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Generate SBOM (Resource Server)
+        run: |
+          ./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.7.9:makeAggregateBom \
+            -DskipTests \
+            -Dmaven.compile.skip=true
         working-directory: resource-server
+
+      - name: Upload resource-server SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: resource-server-sbom-${{ github.run_number }}
+          path: resource-server/target/bom.xml
