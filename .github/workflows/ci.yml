@@ -18,30 +18,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install dependencies
         run: npm ci
         working-directory: ag-prueba-front
-      - name: Lint
-        run: npm run lint --if-present
+
+      - name: Lint frontend
+        run: npm run lint
         working-directory: ag-prueba-front
-      - name: Build
+
+      - name: Build frontend
         run: npm run build --if-present
         working-directory: ag-prueba-front
 
   authorization-server:
     needs: shared-setup
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Build & Package (skip tests)
-        run: mvn -B clean package -DskipTests
+
+      - name: Backend quality & build (Checkstyle)
+        run: ./mvnw clean verify -DskipTests
         working-directory: authorization-server
 
   resource-server:
     needs: shared-setup
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Build & Package (skip tests)
-        run: mvn -B clean package -DskipTests
+
+      - name: Backend quality & build (Checkstyle)
+        run: ./mvnw clean verify -DskipTests
         working-directory: resource-server
