@@ -1,7 +1,7 @@
 
 # Proyecto de Prueba OAuth2 con Spring Boot, Angular y Google Sign-In
 
-Este proyecto de prueba demuestra la implementación de autenticación y autorización utilizando OAuth2 Server Authorization con generación de tokens, así como la integración con Google Sign-In. El proyecto utiliza las siguientes tecnologías:
+Este es un proyecto de prueba demuestra la implementación de autenticación y autorización utilizando OAuth2 Server Authorization con generación de tokens, así como la integración con Google Sign-In. El proyecto utiliza las siguientes tecnologías:
 
 - **Spring Boot**: Para implementar el servidor de autorización y el recurso.
 - **OpenID Connect**: Para autenticación y autorización basada en identidad.

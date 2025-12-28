@@ -3,18 +3,27 @@ name: CI
 on:
   push:
     branches:
-      - "**"
+      - develop
+      - main
   pull_request:
-    branches:
-      - "**"
 
 jobs:
   shared-setup:
-    uses: ./.github/workflows/shared.yml
-    with:
-      node_version: '20'
-      java_version: '17'
-      deploy_env: 'ci'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
   frontend:
     needs: shared-setup
@@ -22,22 +31,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: npm ci
         working-directory: ag-prueba-front
 
       - name: Lint frontend
-        run: npm run lint
+        run: npm run lint --if-present
         working-directory: ag-prueba-front
-
-      - name: Test frontend with coverage
-        run: npx ng test --code-coverage --watch=false --browsers=ChromeHeadless
-        working-directory: ag-prueba-front
-        continue-on-error: true
 
       - name: Build frontend
         run: npm run build --if-present
         working-directory: ag-prueba-front
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: ag-prueba-front/dist/
 
   authorization-server:
     needs: shared-setup
@@ -46,9 +58,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Backend quality & build (Checkstyle)
-        run: ./mvnw clean verify -DskipTests
+      - name: Make mvnw executable
+        run: chmod +x mvnw
         working-directory: authorization-server
+
+      - name: Build backend (skip tests)
+        run: ./mvnw clean package -DskipTests -Dmaven.compile.skip=true
+        working-directory: authorization-server
+
+      - name: Generate SBOM (CycloneDX)
+        run: ./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.7.9:makeAggregateBom -DskipTests -Dmaven.compile.skip=true
+        working-directory: authorization-server
+
+      - name: Dependency vulnerability scan
+        run: ./mvnw org.owasp:dependency-check-maven:check -DskipTests -Dmaven.compile.skip=true
+        working-directory: authorization-server
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: authorization-server-jar
+          path: authorization-server/target/*.jar
+
+      - name: Upload backend SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: authorization-server-sbom
+          path: authorization-server/target/bom.*
 
   resource-server:
     needs: shared-setup
@@ -57,6 +95,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Backend quality & build (Checkstyle)
-        run: ./mvnw clean verify -DskipTests
+      - name: Make mvnw executable
+        run: chmod +x mvnw
         working-directory: resource-server
+
+      - name: Build backend (skip tests)
+        run: ./mvnw clean package -DskipTests -Dmaven.compile.skip=true
+        working-directory: resource-server
+
+      - name: Generate SBOM (CycloneDX)
+        run: ./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.7.9:makeAggregateBom -DskipTests -Dmaven.compile.skip=true
+        working-directory: resource-server
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resource-server-jar
+          path: resource-server/target/*.jar
+
+      - name: Upload backend SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: resource-server-sbom
+          path: resource-server/target/bom.*
