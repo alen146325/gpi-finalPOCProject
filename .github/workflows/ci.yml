@@ -3,15 +3,13 @@ name: CI
 on:
   push:
     branches:
-      - main
       - develop
+      - main
   pull_request:
 
 jobs:
-  frontend:
-    name: Frontend - Lint, Build, SBOM & Artifacts
+  shared-setup:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,7 +19,19 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+  frontend:
+    needs: shared-setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install frontend dependencies
         run: npm ci
         working-directory: ag-prueba-front
 
@@ -32,83 +42,79 @@ jobs:
       - name: Build frontend
         run: npm run build --if-present
         working-directory: ag-prueba-front
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
-      - name: Generate SBOM (Frontend)
-        run: npx @cyclonedx/cyclonedx-npm --output-file bom.json
-        working-directory: ag-prueba-front
-
-      - name: Upload frontend build artifacts
+      - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-build-${{ github.run_number }}
-          path: ag-prueba-front/dist
-
-      - name: Upload frontend SBOM
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-sbom-${{ github.run_number }}
-          path: ag-prueba-front/bom.json
+          name: frontend-dist
+          path: ag-prueba-front/dist/
 
   authorization-server:
-    name: Authorization Server - SBOM
+    needs: shared-setup
     runs-on: ubuntu-latest
     continue-on-error: true
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Grant execute permission to mvnw
+      - name: Make mvnw executable
         run: chmod +x mvnw
         working-directory: authorization-server
 
-      - name: Generate SBOM (Authorization Server)
-        run: |
-          ./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.7.9:makeAggregateBom \
-            -DskipTests \
-            -Dmaven.compile.skip=true
+      - name: Build backend (skip tests)
+        run: ./mvnw clean package -DskipTests -Dmaven.compile.skip=true
         working-directory: authorization-server
 
-      - name: Upload authorization-server SBOM
+      - name: Generate SBOM (CycloneDX)
+        run: ./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.7.9:makeAggregateBom -DskipTests -Dmaven.compile.skip=true
+        working-directory: authorization-server
+
+      - name: Dependency vulnerability scan
+        run: ./mvnw org.owasp:dependency-check-maven:check -DskipTests -Dmaven.compile.skip=true
+        working-directory: authorization-server
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+      - name: Upload backend artifact
         uses: actions/upload-artifact@v4
         with:
-          name: authorization-server-sbom-${{ github.run_number }}
-          path: authorization-server/target/bom.xml
+          name: authorization-server-jar
+          path: authorization-server/target/*.jar
+
+      - name: Upload backend SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: authorization-server-sbom
+          path: authorization-server/target/bom.*
 
   resource-server:
-    name: Resource Server - SBOM
+    needs: shared-setup
     runs-on: ubuntu-latest
     continue-on-error: true
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Grant execute permission to mvnw
+      - name: Make mvnw executable
         run: chmod +x mvnw
         working-directory: resource-server
 
-      - name: Generate SBOM (Resource Server)
-        run: |
-          ./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.7.9:makeAggregateBom \
-            -DskipTests \
-            -Dmaven.compile.skip=true
+      - name: Build backend (skip tests)
+        run: ./mvnw clean package -DskipTests -Dmaven.compile.skip=true
         working-directory: resource-server
 
-      - name: Upload resource-server SBOM
+      - name: Generate SBOM (CycloneDX)
+        run: ./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.7.9:makeAggregateBom -DskipTests -Dmaven.compile.skip=true
+        working-directory: resource-server
+
+      - name: Upload backend artifact
         uses: actions/upload-artifact@v4
         with:
-          name: resource-server-sbom-${{ github.run_number }}
-          path: resource-server/target/bom.xml
+          name: resource-server-jar
+          path: resource-server/target/*.jar
+
+      - name: Upload backend SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: resource-server-sbom
+          path: resource-server/target/bom.*
